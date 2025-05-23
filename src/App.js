@@ -17,6 +17,13 @@ function App() {
     setBalance(prev => Math.max(0, prev + amount));
   };
 
+  const resetBalance = () => {
+    if (window.confirm('Are you sure you want to reset your balance to $100.00?')) {
+      setBalance(100.00);
+      setGameHistory([]);
+    }
+  };
+
   const addToHistory = (game, bet, payout, profit) => {
     setGameHistory(prev => [{
       id: Date.now(),
@@ -71,6 +78,12 @@ function App() {
             <div className="bg-gray-700 px-4 py-2 rounded">
               <span className="text-green-400 font-bold">${balance.toFixed(2)}</span>
             </div>
+            <button
+              onClick={resetBalance}
+              className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-sm font-bold"
+            >
+              Reset
+            </button>
           </div>
         </div>
       </header>
@@ -109,7 +122,6 @@ function App() {
   );
 }
 
-// FIXED MINES GAME - Input handling fixed
 function MinesGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState('');
   const [mineCount, setMineCount] = React.useState(3);
@@ -284,31 +296,14 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
   );
 }
 
-// CRASH GAME
 function CrashGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState('');
-  const [autoCashOut, setAutoCashOut] = React.useState('2.00');
   const [gameState, setGameState] = React.useState('waiting');
   const [currentMultiplier, setCurrentMultiplier] = React.useState(1.00);
   const [crashPoint, setCrashPoint] = React.useState(null);
   const [hasBet, setHasBet] = React.useState(false);
   const [hasCashedOut, setHasCashedOut] = React.useState(false);
   const [gameHistory, setGameHistory] = React.useState([]);
-  const [timeLeft, setTimeLeft] = React.useState(5);
-
-  React.useEffect(() => {
-    let interval;
-
-    if (gameState === 'waiting' && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (gameState === 'waiting' && timeLeft === 0) {
-      startGame();
-    }
-
-    return () => clearInterval(interval);
-  }, [gameState, timeLeft]);
 
   const generateCrashPoint = () => {
     const r = Math.random();
@@ -324,6 +319,11 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
 
     setHasBet(true);
     updateBalance(-bet);
+
+    // Start game immediately after bet is placed
+    setTimeout(() => {
+      startGame();
+    }, 1000);
   };
 
   const cashOut = () => {
@@ -360,17 +360,8 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
           addToHistory('crash', parseFloat(betAmount), 0, -parseFloat(betAmount));
         }
 
-        if (hasBet && !hasCashedOut && parseFloat(autoCashOut) <= crash) {
-          const bet = parseFloat(betAmount);
-          const payout = bet * parseFloat(autoCashOut);
-          const profit = payout - bet;
-          updateBalance(payout);
-          addToHistory('crash', bet, parseFloat(autoCashOut), profit);
-        }
-
         setTimeout(() => {
           setGameState('waiting');
-          setTimeLeft(5);
           setHasBet(false);
           setHasCashedOut(false);
           setCrashPoint(null);
@@ -378,11 +369,6 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
       } else {
         const current = 1 + (crash - 1) * Math.pow(progress, 0.7);
         setCurrentMultiplier(current);
-
-        if (hasBet && !hasCashedOut && current >= parseFloat(autoCashOut)) {
-          cashOut();
-        }
-
         requestAnimationFrame(animate);
       }
     };
@@ -396,12 +382,21 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
 
       <div className="text-center mb-8">
         <div className="bg-gray-900 rounded-lg p-8 mb-4 relative overflow-hidden">
-          {gameState === 'waiting' && (
+          {gameState === 'waiting' && !hasBet && (
             <div>
               <div className="text-4xl font-bold text-gray-400 mb-2">
-                Starting in {timeLeft}s
+                Waiting for bets...
               </div>
-              <div className="text-lg text-gray-500">Place your bets!</div>
+              <div className="text-lg text-gray-500">Place your bet to start!</div>
+            </div>
+          )}
+
+          {gameState === 'waiting' && hasBet && (
+            <div>
+              <div className="text-4xl font-bold text-yellow-400 mb-2">
+                Starting soon...
+              </div>
+              <div className="text-lg text-gray-500">Get ready!</div>
             </div>
           )}
 
@@ -444,7 +439,7 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium mb-2">Bet Amount</label>
           <input
@@ -456,20 +451,6 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
             placeholder="0.10"
             min="0.10"
             step="0.10"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Auto Cash Out</label>
-          <input
-            type="number"
-            value={autoCashOut}
-            onChange={(e) => setAutoCashOut(e.target.value)}
-            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2"
-            disabled={hasBet}
-            placeholder="2.00"
-            min="1.01"
-            step="0.01"
           />
         </div>
 
@@ -504,7 +485,6 @@ function CrashGame({ balance, updateBalance, addToHistory }) {
   );
 }
 
-// FIXED DRAGON TOWER - Smaller height, egg reveal
 function DragonGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState('');
   const [difficulty, setDifficulty] = React.useState('easy');
@@ -562,7 +542,6 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
       setGameActive(false);
       setGameOver(true);
 
-      // Reveal all eggs on current floor
       const allEggsRevealed = [...newRevealed];
       currentFloorData.forEach((cell, index) => {
         if (cell === 'egg') {
@@ -681,7 +660,7 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
                     onClick={() => isCurrentFloor && selectDoor(doorIndex)}
                     disabled={!gameActive || !isCurrentFloor}
                     className={`
-                      w-12 h-6 rounded border text-xs transition-all duration-200 flex items-center justify-center
+                      w-12 h-8 rounded border text-xs transition-all duration-200 flex items-center justify-center
                       ${isRevealed && doorContent === 'egg' 
                         ? 'bg-red-600 border-red-500' 
                         : isRevealed && doorContent === 'safe'
@@ -708,7 +687,6 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
   );
 }
 
-// FIXED DICE GAME
 function DiceGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState('');
   const [prediction, setPrediction] = React.useState(50);
@@ -849,7 +827,6 @@ function DiceGame({ balance, updateBalance, addToHistory }) {
   );
 }
 
-// FIXED LIMBO GAME - Faster climbing
 function LimboGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState('');
   const [targetMultiplier, setTargetMultiplier] = React.useState('2.00');
