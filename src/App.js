@@ -113,7 +113,7 @@ function App() {
   );
 }
 
-// Mines Game Component - COMPLETELY FIXED MULTIPLIER SYSTEM
+// Mines Game Component
 function MinesGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState(1.00);
   const [mineCount, setMineCount] = React.useState(3);
@@ -123,22 +123,6 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
   const [minePositions, setMinePositions] = React.useState([]);
   const [currentMultiplier, setCurrentMultiplier] = React.useState(1);
   const [gemsFound, setGemsFound] = React.useState(0);
-
-  // FIXED: Proper Stake-like multiplier table
-  const getMultiplierTable = (mines) => {
-    const tables = {
-      1: [1.03, 1.07, 1.12, 1.18, 1.24, 1.32, 1.41, 1.52, 1.65, 1.80, 1.98, 2.20, 2.48, 2.83, 3.26, 3.81, 4.52, 5.45, 6.71, 8.45, 11.02, 15.12, 22.09, 36.83],
-      2: [1.08, 1.17, 1.29, 1.44, 1.62, 1.85, 2.14, 2.50, 2.97, 3.56, 4.33, 5.32, 6.63, 8.39, 10.80, 14.18, 19.04, 26.18, 37.24, 55.06, 85.41, 140.83, 268.29],
-      3: [1.12, 1.29, 1.48, 1.71, 2.00, 2.35, 2.79, 3.35, 4.07, 5.00, 6.26, 7.96, 10.35, 13.80, 18.97, 26.95, 39.69, 60.54, 97.52, 166.90, 300.41, 577.50],
-      4: [1.18, 1.41, 1.71, 2.09, 2.58, 3.23, 4.09, 5.26, 6.88, 9.17, 12.51, 17.52, 25.30, 37.95, 58.86, 94.34, 157.18, 274.56, 514.29, 1028.57],
-      5: [1.24, 1.56, 2.00, 2.58, 3.39, 4.52, 6.14, 8.43, 11.78, 16.83, 24.47, 36.83, 56.44, 88.83, 143.88, 242.85, 435.60, 823.50, 1647.00],
-      10: [1.55, 2.18, 3.09, 4.42, 6.42, 9.42, 14.12, 21.56, 33.51, 53.22, 86.49, 144.15, 249.26, 449.68, 849.15, 1698.30, 3616.35, 8240.79],
-      15: [2.14, 3.56, 6.14, 10.80, 19.69, 37.24, 72.99, 147.99, 312.73, 693.51, 1617.53, 3927.26, 10206.67, 28580.00, 88687.50, 318075.00],
-      20: [4.07, 8.15, 17.52, 40.87, 102.17, 272.46, 782.17, 2434.38, 8217.50, 30652.50, 127218.75, 588087.50, 3057450.00],
-      24: [24.47, 73.42, 244.73, 978.91, 4894.55, 29367.30, 220254.75, 2202547.50]
-    };
-    return tables[mines] || tables[3];
-  };
 
   const initializeGame = () => {
     if (betAmount < 0.10 || betAmount > balance) return;
@@ -154,7 +138,7 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
     setGameBoard(Array(25).fill(null));
     setRevealedCells([]);
     setGameActive(true);
-    setCurrentMultiplier(1.00);
+    setCurrentMultiplier(1);
     setGemsFound(0);
     updateBalance(-betAmount);
   };
@@ -174,14 +158,15 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
         return newBoard;
       });
       addToHistory('mines', betAmount, 0, -betAmount);
+      playSound('explosion');
     } else {
       // Found gem
       const newGemsFound = gemsFound + 1;
       setGemsFound(newGemsFound);
 
-      // FIXED: Use proper multiplier table
-      const multiplierTable = getMultiplierTable(mineCount);
-      const multiplier = multiplierTable[newGemsFound - 1] || 1.00;
+      // Calculate multiplier based on gems found and mines
+      const safeSpots = 25 - mineCount;
+      const multiplier = calculateMinesMultiplier(newGemsFound, mineCount, safeSpots);
       setCurrentMultiplier(multiplier);
 
       setGameBoard(prev => {
@@ -189,6 +174,7 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
         newBoard[index] = 'gem';
         return newBoard;
       });
+      playSound('gem');
     }
   };
 
@@ -201,6 +187,20 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
     setGameActive(false);
     updateBalance(payout);
     addToHistory('mines', betAmount, currentMultiplier, profit);
+    playSound('cashout');
+  };
+
+  const calculateMinesMultiplier = (gems, mines, safeSpots) => {
+    let multiplier = 1;
+    for (let i = 0; i < gems; i++) {
+      multiplier *= (safeSpots - i) / (25 - mines - i);
+    }
+    return multiplier;
+  };
+
+  const playSound = (type) => {
+    // Sound effect placeholder
+    console.log(`Playing ${type} sound`);
   };
 
   return (
@@ -230,15 +230,9 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
             className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2"
             disabled={gameActive}
           >
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-            <option value={4}>4</option>
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={15}>15</option>
-            <option value={20}>20</option>
-            <option value={24}>24</option>
+            {Array.from({length: 24}, (_, i) => i + 1).map(num => (
+              <option key={num} value={num}>{num}</option>
+            ))}
           </select>
         </div>
 
@@ -271,17 +265,6 @@ function MinesGame({ balance, updateBalance, addToHistory }) {
           </div>
           <div className="text-sm text-gray-400">
             Gems Found: {gemsFound} | Potential Payout: ${(betAmount * currentMultiplier).toFixed(2)}
-          </div>
-        </div>
-      )}
-
-      {/* Next Gem Preview */}
-      {gameActive && gemsFound < 24 && (
-        <div className="mb-4 text-center">
-          <div className="text-sm text-gray-300">
-            Next gem: <span className="text-yellow-400 font-bold">
-              {(getMultiplierTable(mineCount)[gemsFound] || 1).toFixed(2)}x
-            </span>
           </div>
         </div>
       )}
@@ -322,8 +305,6 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
   const [currentFloor, setCurrentFloor] = React.useState(0);
   const [gameBoard, setGameBoard] = React.useState([]);
   const [currentMultiplier, setCurrentMultiplier] = React.useState(1);
-  const [revealedDoors, setRevealedDoors] = React.useState([]);
-  const [gameOver, setGameOver] = React.useState(false);
 
   const difficultySettings = {
     easy: { eggs: 1, multiplier: 1.5 },
@@ -335,7 +316,7 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
     if (betAmount < 0.10 || betAmount > balance) return;
 
     const floors = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 9; i++) {
       const floor = Array(4).fill('safe');
       const eggCount = difficultySettings[difficulty].eggs;
 
@@ -355,38 +336,34 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
     setCurrentFloor(0);
     setGameActive(true);
     setCurrentMultiplier(1);
-    setRevealedDoors([]);
-    setGameOver(false);
     updateBalance(-betAmount);
   };
 
   const selectDoor = (doorIndex) => {
-    if (!gameActive || gameOver) return;
-
-    const floorKey = `${currentFloor}-${doorIndex}`;
-    const newRevealed = [...revealedDoors, floorKey];
-    setRevealedDoors(newRevealed);
+    if (!gameActive) return;
 
     const currentFloorData = gameBoard[currentFloor];
     if (currentFloorData[doorIndex] === 'egg') {
       // Hit egg - game over
       setGameActive(false);
-      setGameOver(true);
       addToHistory('dragon', betAmount, 0, -betAmount);
+      playSound('explosion');
     } else {
       // Safe door
       const newMultiplier = currentMultiplier * difficultySettings[difficulty].multiplier;
       setCurrentMultiplier(newMultiplier);
 
-      if (currentFloor === 5) {
+      if (currentFloor === 8) {
         // Reached top - auto cash out
         const payout = betAmount * newMultiplier;
         const profit = payout - betAmount;
         setGameActive(false);
         updateBalance(payout);
         addToHistory('dragon', betAmount, newMultiplier, profit);
+        playSound('victory');
       } else {
         setCurrentFloor(prev => prev + 1);
+        playSound('success');
       }
     }
   };
@@ -400,6 +377,11 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
     setGameActive(false);
     updateBalance(payout);
     addToHistory('dragon', betAmount, currentMultiplier, profit);
+    playSound('cashout');
+  };
+
+  const playSound = (type) => {
+    console.log(`Playing ${type} sound`);
   };
 
   return (
@@ -460,7 +442,7 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
       {gameActive && (
         <div className="mb-4 text-center">
           <div className="text-lg">
-            Floor: {currentFloor + 1}/6 | Multiplier: <span className="text-green-400 font-bold">{currentMultiplier.toFixed(2)}x</span>
+            Floor: {currentFloor + 1}/9 | Multiplier: <span className="text-green-400 font-bold">{currentMultiplier.toFixed(2)}x</span>
           </div>
           <div className="text-sm text-gray-400">
             Potential Payout: ${(betAmount * currentMultiplier).toFixed(2)}
@@ -469,43 +451,29 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
       )}
 
       {/* Game Tower */}
-      <div className="max-w-sm mx-auto">
-        {Array.from({length: 6}, (_, floorIndex) => (
-          <div key={floorIndex} className={`mb-1 ${5 - floorIndex === currentFloor ? 'ring-2 ring-green-400' : ''}`}>
-            <div className="text-center text-xs mb-1">Floor {6 - floorIndex}</div>
-            <div className="grid grid-cols-4 gap-1">
-              {Array.from({length: 4}, (_, doorIndex) => {
-                const floorKey = `${5 - floorIndex}-${doorIndex}`;
-                const isRevealed = revealedDoors.includes(floorKey);
-                const isCurrentFloor = 5 - floorIndex === currentFloor;
-                const isPastFloor = 5 - floorIndex < currentFloor;
-                const doorContent = gameBoard[5 - floorIndex] ? gameBoard[5 - floorIndex][doorIndex] : null;
-
-                return (
-                  <button
-                    key={doorIndex}
-                    onClick={() => isCurrentFloor && selectDoor(doorIndex)}
-                    disabled={!gameActive || !isCurrentFloor}
-                    className={`
-                      aspect-square rounded border text-sm transition-all duration-200
-                      ${isRevealed && doorContent === 'egg' 
-                        ? 'bg-red-600 border-red-500' 
-                        : isRevealed && doorContent === 'safe'
-                        ? 'bg-green-600 border-green-500'
-                        : isCurrentFloor && gameActive
-                        ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                        : isPastFloor
-                        ? 'bg-green-600 border-green-500'
-                        : 'bg-gray-800 border-gray-700'
-                      }
-                    `}
-                  >
-                    {isRevealed && doorContent === 'egg' && '🥚'}
-                    {isRevealed && doorContent === 'safe' && '🚪'}
-                    {isPastFloor && !isRevealed && '🚪'}
-                  </button>
-                );
-              })}
+      <div className="max-w-md mx-auto">
+        {Array.from({length: 9}, (_, floorIndex) => (
+          <div key={floorIndex} className={`mb-2 ${8 - floorIndex === currentFloor ? 'ring-2 ring-green-400' : ''}`}>
+            <div className="text-center text-sm mb-1">Floor {9 - floorIndex}</div>
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({length: 4}, (_, doorIndex) => (
+                <button
+                  key={doorIndex}
+                  onClick={() => 8 - floorIndex === currentFloor && selectDoor(doorIndex)}
+                  disabled={!gameActive || 8 - floorIndex !== currentFloor}
+                  className={`
+                    aspect-square rounded-lg border-2 transition-all duration-200 text-xl
+                    ${8 - floorIndex === currentFloor && gameActive
+                      ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                      : 8 - floorIndex > currentFloor
+                      ? 'bg-gray-800 border-gray-700'
+                      : 'bg-green-600 border-green-500'
+                    }
+                  `}
+                >
+                  {8 - floorIndex < currentFloor ? '🚪' : ''}
+                </button>
+              ))}
             </div>
           </div>
         ))}
@@ -514,14 +482,12 @@ function DragonGame({ balance, updateBalance, addToHistory }) {
   );
 }
 
-// Plinko Game Component
+// Plinko Game Component  
 function PlinkoGame({ balance, updateBalance, addToHistory }) {
   const [betAmount, setBetAmount] = React.useState(1.00);
   const [rows, setRows] = React.useState(12);
   const [risk, setRisk] = React.useState('medium');
   const [isDropping, setIsDropping] = React.useState(false);
-  const [ballPosition, setBallPosition] = React.useState(null);
-  const [finalBucket, setFinalBucket] = React.useState(null);
 
   const riskMultipliers = {
     low: {
@@ -545,40 +511,30 @@ function PlinkoGame({ balance, updateBalance, addToHistory }) {
     if (betAmount < 0.10 || betAmount > balance || isDropping) return;
 
     setIsDropping(true);
-    setFinalBucket(null);
     updateBalance(-betAmount);
 
-    setBallPosition(0);
+    // Simulate ball drop
+    setTimeout(() => {
+      const multipliers = riskMultipliers[risk][rows];
+      const bucketIndex = Math.floor(Math.random() * multipliers.length);
+      const multiplier = multipliers[bucketIndex];
+      const payout = betAmount * multiplier;
+      const profit = payout - betAmount;
 
-    let currentPosition = Math.floor(riskMultipliers[risk][rows].length / 2);
-    let step = 0;
+      updateBalance(payout);
+      addToHistory('plinko', betAmount, multiplier, profit);
+      setIsDropping(false);
 
-    const animateStep = () => {
-      if (step < rows) {
-        const bounce = Math.random() < 0.5 ? -0.5 : 0.5;
-        currentPosition = Math.max(0, Math.min(riskMultipliers[risk][rows].length - 1, currentPosition + bounce));
-        setBallPosition(currentPosition);
-        step++;
-        setTimeout(animateStep, 150);
+      if (multiplier > 1) {
+        playSound('win');
       } else {
-        const bucketIndex = Math.floor(currentPosition);
-        const multiplier = riskMultipliers[risk][rows][bucketIndex];
-        const payout = betAmount * multiplier;
-        const profit = payout - betAmount;
-
-        setFinalBucket(bucketIndex);
-        updateBalance(payout);
-        addToHistory('plinko', betAmount, multiplier, profit);
-
-        setTimeout(() => {
-          setIsDropping(false);
-          setBallPosition(null);
-          setFinalBucket(null);
-        }, 1000);
+        playSound('lose');
       }
-    };
+    }, 2000);
+  };
 
-    setTimeout(animateStep, 200);
+  const playSound = (type) => {
+    console.log(`Playing ${type} sound`);
   };
 
   return (
@@ -641,34 +597,16 @@ function PlinkoGame({ balance, updateBalance, addToHistory }) {
 
       {/* Plinko Board Visualization */}
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-4 relative h-8">
-          {ballPosition !== null && (
-            <div 
-              className="absolute w-4 h-4 bg-yellow-400 rounded-full transition-all duration-150"
-              style={{
-                left: `${(ballPosition / (riskMultipliers[risk][rows].length - 1)) * 100}%`,
-                transform: 'translateX(-50%)'
-              }}
-            ></div>
-          )}
+        <div className="text-center mb-4">
+          <div className={`inline-block w-4 h-4 rounded-full ${isDropping ? 'bg-yellow-400 animate-bounce' : 'bg-gray-600'}`}></div>
         </div>
 
-        <div className="mb-4 h-32 relative">
-          {Array.from({length: rows}, (_, row) => (
-            <div key={row} className="absolute w-full flex justify-center" style={{top: `${(row / rows) * 100}%`}}>
-              {Array.from({length: row + 3}, (_, peg) => (
-                <div key={peg} className="w-2 h-2 bg-gray-600 rounded-full mx-1"></div>
-              ))}
-            </div>
-          ))}
-        </div>
-
+        {/* Multiplier Display */}
         <div className="grid gap-1 mb-4" style={{gridTemplateColumns: `repeat(${riskMultipliers[risk][rows].length}, 1fr)`}}>
           {riskMultipliers[risk][rows].map((multiplier, index) => (
             <div
               key={index}
-              className={`text-center p-2 rounded text-sm font-bold transition-all duration-300 ${
-                finalBucket === index ? 'ring-2 ring-yellow-400 scale-110' :
+              className={`text-center p-2 rounded text-sm font-bold ${
                 multiplier >= 10 ? 'bg-red-600' :
                 multiplier >= 2 ? 'bg-yellow-600' :
                 multiplier >= 1 ? 'bg-green-600' :
@@ -714,6 +652,9 @@ function DiceGame({ balance, updateBalance, addToHistory }) {
 
       if (won) {
         updateBalance(payout);
+        playSound('win');
+      } else {
+        playSound('lose');
       }
 
       addToHistory('dice', betAmount, won ? multiplier : 0, profit);
@@ -721,10 +662,15 @@ function DiceGame({ balance, updateBalance, addToHistory }) {
     }, 1000);
   };
 
+  const playSound = (type) => {
+    console.log(`Playing ${type} sound`);
+  };
+
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       <h2 className="text-2xl font-bold mb-6">Dice</h2>
 
+      {/* Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div>
           <label className="block text-sm font-medium mb-2">Bet Amount</label>
@@ -750,6 +696,7 @@ function DiceGame({ balance, updateBalance, addToHistory }) {
         </div>
       </div>
 
+      {/* Prediction Controls */}
       <div className="mb-6">
         <div className="flex justify-center space-x-4 mb-4">
           <button
@@ -800,6 +747,7 @@ function DiceGame({ balance, updateBalance, addToHistory }) {
         </div>
       </div>
 
+      {/* Dice Display */}
       <div className="text-center">
         <div className="mb-4">
           <div className={`inline-block w-20 h-20 bg-gray-700 rounded-lg flex items-center justify-center text-2xl font-bold ${isRolling ? 'animate-spin' : ''}`}>
@@ -841,48 +789,54 @@ function LimboGame({ balance, updateBalance, addToHistory }) {
     setCurrentMultiplier(1.00);
     updateBalance(-betAmount);
 
+    // Generate crash point
     const crash = generateCrashPoint();
     setCrashPoint(crash);
 
-    const startTime = Date.now();
-    const duration = Math.min(3000, crash * 500);
+    // Animate multiplier increase
+    const interval = setInterval(() => {
+      setCurrentMultiplier(prev => {
+        const next = prev + 0.01;
+        if (next >= crash) {
+          clearInterval(interval);
+          setCrashed(true);
+          setIsPlaying(false);
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = elapsed / duration;
+          if (targetMultiplier <= crash) {
+            // Player wins
+            const payout = betAmount * targetMultiplier;
+            const profit = payout - betAmount;
+            updateBalance(payout);
+            addToHistory('limbo', betAmount, targetMultiplier, profit);
+            playSound('win');
+          } else {
+            // Player loses
+            addToHistory('limbo', betAmount, 0, -betAmount);
+            playSound('crash');
+          }
 
-      if (progress >= 1) {
-        setCurrentMultiplier(crash);
-        setCrashed(true);
-        setIsPlaying(false);
-
-        if (targetMultiplier <= crash) {
-          const payout = betAmount * targetMultiplier;
-          const profit = payout - betAmount;
-          updateBalance(payout);
-          addToHistory('limbo', betAmount, targetMultiplier, profit);
-        } else {
-          addToHistory('limbo', betAmount, 0, -betAmount);
+          return crash;
         }
-      } else {
-        const current = 1 + (crash - 1) * Math.pow(progress, 0.5);
-        setCurrentMultiplier(current);
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
+        return next;
+      });
+    }, 50);
   };
 
   const generateCrashPoint = () => {
+    // House edge of 1%
     const r = Math.random();
     return Math.max(1.00, Math.floor((99 / (r * 99)) * 100) / 100);
+  };
+
+  const playSound = (type) => {
+    console.log(`Playing ${type} sound`);
   };
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       <h2 className="text-2xl font-bold mb-6">Limbo</h2>
 
+      {/* Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium mb-2">Bet Amount</label>
@@ -921,9 +875,10 @@ function LimboGame({ balance, updateBalance, addToHistory }) {
         </div>
       </div>
 
+      {/* Game Display */}
       <div className="text-center">
         <div className="mb-6">
-          <div className={`text-6xl font-bold transition-all duration-100 ${
+          <div className={`text-6xl font-bold ${
             crashed 
               ? targetMultiplier <= crashPoint 
                 ? 'text-green-400' 
