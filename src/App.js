@@ -932,8 +932,8 @@ function LimboGame({ balance, updateBalance, addToHistory }) {
   const generateCrashPoint = () => {
     const r = Math.random();
     if (r < 0.5) return 1.00 + Math.random() * 1.99;
-    if (r < 0.8) return 3.00 + Math.random() * 7.00;
-    return 10.00 + Math.random() * 90.00;
+    if (r < 1.2) return 3.00 + Math.random() * 7.00;
+    return 10.00 + Math.random() * 45.00;
   };
 
   const startGame = () => {
