@@ -2,7 +2,7 @@ import React from 'react';
 
 function App() {
   const [balance, setBalance] = React.useState(() => {
-    const saved = localStorage.getItem('stakeBalance1');
+    const saved = localStorage.getItem('stakeBalance2');
     return saved ? parseFloat(saved) : 35.00;
   });
   
@@ -10,7 +10,7 @@ function App() {
   const [gameHistory, setGameHistory] = React.useState([]);
 
   React.useEffect(() => {
-    localStorage.setItem('stakeBalance1', balance.toString());
+    localStorage.setItem('stakeBalance2', balance.toString());
   }, [balance]);
 
   const updateBalance = (amount) => {
