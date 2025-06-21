@@ -3,7 +3,7 @@ import React from 'react';
 function App() {
   const [balance, setBalance] = React.useState(() => {
     const saved = localStorage.getItem('stakeBalance1');
-    return saved ? parseFloat(saved) : 100.00;
+    return saved ? parseFloat(saved) : 35.00;
   });
   
   const [currentGame, setCurrentGame] = React.useState('crash');
@@ -18,8 +18,8 @@ function App() {
   };
 
   const resetBalance = () => {
-    if (window.confirm('Are you sure you want to reset your balance to $100.00?')) {
-      setBalance(100.00);
+    if (window.confirm('Are you sure you want to reset your balance to $50.00?')) {
+      //setBalance(50.00);
       setGameHistory([]);
     }
   };
